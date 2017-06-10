@@ -1,5 +1,3 @@
 CACHE MANIFEST
 index.html
-src/canvas.js
-src/color.js
-src/app.js
+script.js

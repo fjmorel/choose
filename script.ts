@@ -1,6 +1,3 @@
-import * as Color from "./color";
-import * as Canvas from "./canvas";
-
 interface ITouchInfo {
 	/** Being touched right now */
 	active?: boolean;
@@ -19,6 +16,156 @@ interface ITouchInfo {
 	/** Touch circle color */
 	color: string;
 }
+
+const Canvas = (function() {
+	const TAU = Math.PI * 2;
+
+	const randomRotations: number[] = [0, 0, 0];
+	for(let i = 3; i <= 10; i++) {
+		randomRotations[i] = TAU * Math.random();
+	}
+
+	return {
+		drawCircle, drawRegularPolygon, drawText
+	};
+
+	// From http://www.html5canvastutorials.com/tutorials/html5-canvas-circles/
+	function drawCircle(context: CanvasRenderingContext2D, centerX: number, centerY: number, radius: number, color: string, fill: boolean) {
+		context.beginPath();
+		context.arc(centerX, centerY, radius, 0, TAU, false);
+		if(fill) {
+			context.fillStyle = color;
+			context.fill();
+		}
+		context.lineWidth = 5;
+		context.strokeStyle = color;
+		context.stroke();
+		context.closePath();
+	}
+
+	// From http://www.arungudelli.com/html5/html5-canvas-polygon/
+	function drawRegularPolygon(context: CanvasRenderingContext2D, x: number, y: number, radius: number, sides: number, color: string) {
+		if(sides < 3) { return; }
+		context.fillStyle = color;
+		context.strokeStyle = color;
+		context.save();
+		context.beginPath();
+		const a = TAU / sides;
+		context.translate(x, y);
+		context.rotate(randomRotations[sides]);
+		context.moveTo(radius, 0);
+		for(let i = 1; i < sides; i++) {
+			const theta = a * i;
+			context.lineTo(radius * Math.cos(theta), radius * Math.sin(theta));
+		}
+		context.closePath();
+		context.fill();
+		context.restore();
+	}
+
+	function drawText(context: CanvasRenderingContext2D, turn: number, radius: number, x: number, y: number) {
+		// Player 1 gets bigger font
+		context.font = (turn === 1 ? 2 : 1) * radius + "px sans-serif";
+		context.fillStyle = "black";
+		context.textAlign = "center";
+		context.textBaseline = "middle";
+		context.fillText("" + turn, x, y);
+	}
+})();
+
+const Color = (function() {
+	let lastHue = Math.random();
+	const GOLDEN_RATIO_CONJUGATE = 0.618033988749895;
+
+	return {
+		nextColor, hsvToRgb, toHex
+	};
+
+	// Based on http://martin.ankerl.com/2009/12/09/how-to-create-random-colors-programmatically/
+	function nextColor() {
+		const h = (lastHue + GOLDEN_RATIO_CONJUGATE) % 1;
+		lastHue = h;
+		return toHex(hsvToRgb(h, 0.5, 0.95));
+	}
+
+	// From http://snipplr.com/view.php?codeview&id=14590
+	/**
+	 * HSV to RGB color conversion
+	 *
+	 * H runs from 0 to 360 degrees
+	 * S and V run from 0 to 1
+	 *
+	 * Ported from the excellent java algorithm by Eugene Vishnevsky at:
+	 * http://www.cs.rit.edu/~ncs/color/t_convert.html
+	 */
+	function hsvToRgb(h: number, s: number, v: number) {
+		// Make sure our arguments stay in-range
+		h = Math.max(0, Math.min(1, h));
+		s = Math.max(0, Math.min(1, s));
+		v = Math.max(0, Math.min(1, v));
+
+		// Achromatic (grey)
+		if(s === 0) {
+			return [Math.round(v * 255), Math.round(v * 255), Math.round(v * 255)];
+		}
+
+		h *= 6; // sector 0 to 5
+		const i = Math.floor(h);
+		const f = h - i; // factorial part of h
+		const p = v * (1 - s);
+		const q = v * (1 - s * f);
+		const t = v * (1 - s * (1 - f));
+
+		// Assign rgb
+		let r: number;
+		let g: number;
+		let b: number;
+		switch(i) {
+			case 0:
+				r = v;
+				g = t;
+				b = p;
+				break;
+
+			case 1:
+				r = q;
+				g = v;
+				b = p;
+				break;
+
+			case 2:
+				r = p;
+				g = v;
+				b = t;
+				break;
+
+			case 3:
+				r = p;
+				g = q;
+				b = v;
+				break;
+
+			case 4:
+				r = t;
+				g = p;
+				b = v;
+				break;
+
+			default: // case 5:
+				r = v;
+				g = p;
+				b = q;
+		}
+
+		return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+	}
+
+	/** Convert RGB # array to hex string */
+	function toHex(rgb: number[]) {
+		// Add 0 then slice string to force 2 digits for all numbers
+		return "#" + rgb.map(n => ("0" + Math.round(n).toString(16)).slice(-2)).join("");
+	}
+})();
 
 /** Active touches and recent let go points */
 const _touchPoints: { [key: string]: ITouchInfo } = {};
